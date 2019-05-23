@@ -13,7 +13,7 @@ jobs:
           name: Package
           command: |
             mkdir target
-            curl -sLo target/builder.sh repo.opsnow.io/valve-ctl/builder
+            cp ./builder.sh target/builder.sh
             bash ./target/builder.sh package
             bash ./build.sh
       - persist_to_workspace:
