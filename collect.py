@@ -102,16 +102,16 @@ if __name__ == "__main__":
                         #     sum_size=round(1.00*sum_size/1024.00)
                         #     sum_size=round(1.00*sum_size/1024.00)
                         sum_size = humanbytes(sum_size*1024)
-                        print(get_namespaces[val] + " " + pod_name.replace('\n','') + " " + str(sum_size))
+                        print("EFS PVC Monitor >> " + " namespace = " + get_namespaces[val] + "/ pod name = " + pod_name.replace('\n','') + "/ PVC size =  " + str(sum_size))
                     else:
-                        print(get_namespaces[val] + " " + pod_name.replace('\n','') + " 4KB")
+                        print("EFS PVC Monitor >> " + " namespace = " + get_namespaces[val] + "/ pod name = " + pod_name.replace('\n','') +" / PVC size =  " + "4KB")
                     #print(pod_name_cmd)
                     #print('pod name : ' + pod_name.replace('\n',''))
                 
                     ## namespace / pod name / size
                 
     stop = timeit.default_timer()
-    print(stop - start)
+    print("laptime = " + stop - start)
     
     '''
     [ec2-user@seoul-dev-okc1-bastion ~]$ k get pvc --all-namespaces
