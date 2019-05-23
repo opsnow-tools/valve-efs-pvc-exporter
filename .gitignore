@@ -1,5 +1,4 @@
-Jenkinsfile
-
-charts/
-
-draft.toml
+.dockerignore
+.draftignore
+.valvesecret
+test.sh
