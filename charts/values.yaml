@@ -1,8 +1,8 @@
 image:
   repository: opsnowtools/efs-pvc-exporter
-  tag: latest
+  tag: v0.0.0
 
-schedule: "* * * * *"
+schedule: "*/10 * * * *"
 
 restart: Never
 
@@ -18,8 +18,6 @@ env: {}
 
 configmap:
   enabled: false
-  name: "CONFIGMAP_NAME"
 
 secret:
   enabled: false
-  name: "SECRET_NAME"

@@ -24,10 +24,6 @@ spec:
 {{ if or .Values.configmap.enabled .Values.secret.enabled }}
             envFrom:
 {{ end }}
-{{ if .Values.configmap.enabled }}
-              - configMapRef:
-                  name: {{ .Values.configmap.name }}
-{{ end }}
 {{ if .Values.secret.enabled }}
               - secretRef:
                   name: {{ .Values.secret.name }}
