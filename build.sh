@@ -9,7 +9,7 @@ CMD=${1:-$CIRCLE_JOB}
 RUN_PATH=${2:-$SHELL_DIR}
 
 USERNAME=${CIRCLE_PROJECT_USERNAME:-opsnow-tools}
-REPONAME=${CIRCLE_PROJECT_REPONAME:-elasticsearch-snapshot}
+REPONAME=${CIRCLE_PROJECT_REPONAME:-efs-pvc-exporter}
 
 BRANCH=${CIRCLE_BRANCH:-master}
 
@@ -77,7 +77,7 @@ _package() {
     _result "VERSION=${VERSION}"
 
     # chart path
-    CHART_PATH="${RUN_PATH}/charts/elasticsearch-snapshot"
+    CHART_PATH="${RUN_PATH}/charts/efs-pvc-exporter"
 
     # replace
     _replace "s|version: .*|version: ${VERSION}|" ${CHART_PATH}/Chart.yaml
