@@ -42,3 +42,15 @@ jobs:
           name: Release
           command: |
             bash ./target/builder.sh release
+
+workflows:
+  version: 2
+  apply:
+    jobs:
+      - package
+      - publish:
+          requires:
+            - package
+      - release:
+          requires:
+            - package
