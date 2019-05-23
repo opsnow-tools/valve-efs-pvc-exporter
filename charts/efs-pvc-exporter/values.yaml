@@ -7,7 +7,7 @@ profile: default
 namespace: development
 
 image:
-  repository: docker-registry.127.0.0.1.nip.io:30500/efs-pvc-exporter
+  repository: efs-pvc-exporter
   tag: latest
   pullPolicy: Always
 

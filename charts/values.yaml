@@ -1,0 +1,25 @@
+image:
+  repository: opsnowtools/efs-pvc-exporter
+  tag: latest
+
+schedule: "* * * * *"
+
+restart: Never
+
+#resources:
+#  requests:
+#    cpu: 100m
+#    memory: 128Mi
+#  limits:
+#    cpu: 120m
+#    memory: 153Mi
+
+env: {}
+
+configmap:
+  enabled: false
+  name: "CONFIGMAP_NAME"
+
+secret:
+  enabled: false
+  name: "SECRET_NAME"
