@@ -6,5 +6,6 @@ spec:
   accessModes:
     - ReadWriteMany
   resources:
-    storage: 1Gi
+    requests:
+      storage: 1Gi
   storageClassName: efs
