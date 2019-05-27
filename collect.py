@@ -32,9 +32,9 @@ if __name__ == "__main__":
     get_pvc_id = subprocess.check_output("kubectl get pvc --all-namespaces | awk '{print $4}'", shell=True)
 
 
-    get_namespaces = get_namespace.split().decode("utf-8")
-    get_pvc_names = get_pvc_name.split().decode("utf-8")
-    get_pvc_ids = get_pvc_id.split().decode("utf-8")
+    get_namespaces = get_namespace.decode("utf-8")split()
+    get_pvc_names = get_pvc_name.decode("utf-8").split()
+    get_pvc_ids = get_pvc_id.decode("utf-8").split()
 
 
     if not get_namespaces:
