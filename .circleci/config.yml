@@ -3,23 +3,23 @@
 #
 version: 2
 jobs:
-  package:
+  build:
     docker:
       - image: circleci/python
     working_directory: ~/works
     steps:
       - checkout
       - run:
-          name: Package
+          name: Build
           command: |
             mkdir target
             curl -sLo target/builder.sh repo.opsnow.io/valve-ctl/builder
-            bash ./target/builder.sh package
+            bash ./target/builder.sh
             bash ./build.sh
       - persist_to_workspace:
           root: ~/works
           paths:
-            - target
+            - .
   publish:
     docker:
       - image: opspresso/awscli
@@ -30,7 +30,7 @@ jobs:
       - run:
           name: Publish
           command: |
-            bash ./target/builder.sh publish
+            bash ./target/builder.sh
   release:
     docker:
       - image: circleci/golang
@@ -41,7 +41,20 @@ jobs:
       - run:
           name: Release
           command: |
-            bash ./target/builder.sh release
+            bash ./target/builder.sh
+  docker:
+    docker:
+      - image: circleci/python
+    working_directory: ~/works
+    steps:
+      - attach_workspace:
+          at: ~/works
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Docker
+          command: |
+            bash ./target/builder.sh
   slack:
     docker:
       - image: circleci/python
@@ -52,19 +65,27 @@ jobs:
       - run:
           name: Slack
           command: |
-            bash ./target/builder.sh slack
+            bash ./target/builder.sh
+
+# Advanced Settings
+# - Build forked pull requests
+# - Pass secrets to builds from forked pull requests
+# - Only build pull requests
 
 workflows:
   version: 2
   apply:
     jobs:
-      - package
+      - build
       - publish:
           requires:
-            - package
+            - build
       - release:
           requires:
-            - package
+            - build
+      - docker:
+          requires:
+            - release
       - slack:
           requires:
             - release
