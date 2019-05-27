@@ -1,0 +1,10 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "fullname" . }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    storage: 1Gi
+  storageClassName: efs
