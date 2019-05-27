@@ -32,9 +32,9 @@ if __name__ == "__main__":
     get_pvc_id = subprocess.check_output("kubectl get pvc --all-namespaces | awk '{print $4}'", shell=True)
 
 
-    get_namespaces = get_namespace.split()
-    get_pvc_names = get_pvc_name.split()
-    get_pvc_ids = get_pvc_id.split()
+    get_namespaces = get_namespace.split().decode("utf-8")
+    get_pvc_names = get_pvc_name.split().decode("utf-8")
+    get_pvc_ids = get_pvc_id.split().decode("utf-8")
 
 
     if not get_namespaces:
@@ -47,13 +47,14 @@ if __name__ == "__main__":
         print(get_namespaces)
 
         get_efs_provisioner_name = subprocess.check_output("kubectl get pod -n kube-system | grep efs | awk '{print $1}'", shell=True)
-        get_efs_provisioner_name = get_efs_provisioner_name.replace('\n','')
+        get_efs_provisioner_name = get_efs_provisioner_name.decode("utf-8").replace('\n','')
         
         
         for val in range(len(get_namespaces)):
             find_dir_cmd = "kubectl exec -it " + get_efs_provisioner_name + " -n kube-system -- ls -al /persistentvolumes | awk '{print $9}' | grep " + get_pvc_names[val] + "-" + get_pvc_ids[val]
             try:
                 find_dir = subprocess.check_output(find_dir_cmd, shell=True)
+                find_dir = find_dir.decode("utf-8")
             except subprocess.CalledProcessError as ex:
                 o = ex.output
                 returncode = ex.returncode
@@ -64,6 +65,7 @@ if __name__ == "__main__":
                 ## pod name
                 pod_name_cmd = "kubectl describe pvc -n " + get_namespaces[val] + " " + get_pvc_names[val] + " | grep Mounted | awk '{print $3}'"
                 pod_name = subprocess.check_output(pod_name_cmd, shell=True)
+                pod_name = pod_name.decode("utf-8")
 
                 if 'none' not in pod_name.replace('\n',''):
                     ## calculate all size
@@ -78,7 +80,7 @@ if __name__ == "__main__":
                     print("pvc name : "+get_pvc_names[val])
                     find_file_list_cmd = "kubectl exec -it " +get_efs_provisioner_name + " -n kube-system -- ls -al /persistentvolumes/" + get_pvc_names[val] + "-" + get_pvc_ids[val] + " | awk '{print $9}' | sed -r \"s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g\""
                     find_file_list = subprocess.check_output(find_file_list_cmd, shell=True)
-                    find_file_list = find_file_list.split()
+                    find_file_list = find_file_list.decode("utf-8").split()
                     find_file_list.remove('.')
                     find_file_list.remove('..')
                     # print(find_file_list)
@@ -88,7 +90,7 @@ if __name__ == "__main__":
                         for _file in find_file_list:
                             m_size_cmd = "kubectl exec -it " + get_efs_provisioner_name + " -n kube-system -- du -ks /persistentvolumes/" + get_pvc_names[val] + "-" + get_pvc_ids[val] + "/" + _file + " | awk '{print $1}'"
                             m_size = subprocess.check_output(m_size_cmd, shell=True)
-                            m_size=m_size.split()
+                            m_size=m_size.decode("utf-8").split()
                             # print(''.join(m_size))
                             mount_size.append(''.join(m_size))
                         mount_size = list(map(int, mount_size))
