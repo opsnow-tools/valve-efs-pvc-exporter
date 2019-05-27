@@ -42,6 +42,17 @@ jobs:
           name: Release
           command: |
             bash ./target/builder.sh release
+  slack:
+    docker:
+      - image: circleci/python
+    working_directory: ~/works
+    steps:
+      - attach_workspace:
+          at: ~/works
+      - run:
+          name: Slack
+          command: |
+            bash ./target/builder.sh slack
 
 workflows:
   version: 2
@@ -54,3 +65,6 @@ workflows:
       - release:
           requires:
             - package
+      - slack:
+          requires:
+            - release
