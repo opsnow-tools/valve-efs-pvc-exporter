@@ -111,7 +111,8 @@ if __name__ == "__main__":
                     ## namespace / pod name / size
                 
     stop = timeit.default_timer()
-    print("laptime = " + stop - start)
+    laptime=stop-start
+    print('laptime = ' + str(laptime))
     
     '''
     [ec2-user@seoul-dev-okc1-bastion ~]$ k get pvc --all-namespaces
