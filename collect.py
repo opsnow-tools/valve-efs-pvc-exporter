@@ -3,6 +3,9 @@ import os
 import sys
 import subprocess
 import timeit
+import json
+from datetime import datetime
+
 
 def humanbytes(B):
    'Return the given bytes as a human friendly KB, MB, GB, or TB string'
@@ -25,6 +28,7 @@ if __name__ == "__main__":
     ##### Count filesystem size for du / df 
     ##### It failed because prometheus server can't use '/bin/bash' or '/bin/sh', so it du / df command didn't work.
     
+    datetime_now = datetime.now()
     start = timeit.default_timer()
     get_namespaces = []
     get_namespace = subprocess.check_output("kubectl get pvc --all-namespaces | awk '{print $1}'", shell=True)
@@ -44,12 +48,12 @@ if __name__ == "__main__":
         get_pvc_names.pop(0)
         get_pvc_ids.pop(0)
         
-        print(get_namespaces)
+        #print(get_namespaces)
 
         get_efs_provisioner_name = subprocess.check_output("kubectl get pod -n kube-system | grep efs | awk '{print $1}'", shell=True)
         get_efs_provisioner_name = get_efs_provisioner_name.decode("utf-8").replace('\n','')
         
-        
+        metric_list = []
         for val in range(len(get_namespaces)):
             find_dir_cmd = "kubectl exec -it " + get_efs_provisioner_name + " -n kube-system -- ls -al /persistentvolumes | awk '{print $9}' | grep " + get_pvc_names[val] + "-" + get_pvc_ids[val]
             try:
@@ -77,7 +81,7 @@ if __name__ == "__main__":
                     #print(mount_size)
 
                     ## find list
-                    print("pvc name : "+get_pvc_names[val])
+                    #print("pvc name : "+get_pvc_names[val])
                     find_file_list_cmd = "kubectl exec -it " +get_efs_provisioner_name + " -n kube-system -- ls -al /persistentvolumes/" + get_pvc_names[val] + "-" + get_pvc_ids[val] + " | awk '{print $9}' | sed -r \"s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g\""
                     find_file_list = subprocess.check_output(find_file_list_cmd, shell=True)
                     find_file_list = find_file_list.decode("utf-8").split()
@@ -94,24 +98,20 @@ if __name__ == "__main__":
                             # print(''.join(m_size))
                             mount_size.append(''.join(m_size))
                         mount_size = list(map(int, mount_size))
+                        
                         sum_size = sum(mount_size)
-                        # if sum_size < 1024:
-                        #     print(get_namespaces[val] + " " + pod_name.replace('\n','') + " " + str(sum_size)+ "Kb")
-                        # elif sum_size < 1048576:
-                        #     sum_size=round(1.00*sum_size/1024.00)
-                        #     print(get_namespaces[val] + " " + pod_name.replace('\n','') + " " + str(sum_size)+ "Mb")
-                        # else:
-                        #     sum_size=round(1.00*sum_size/1024.00)
-                        #     sum_size=round(1.00*sum_size/1024.00)
                         sum_size = humanbytes(sum_size*1024)
-                        print("EFS PVC Monitor >> " + " namespace = " + get_namespaces[val] + "/ pod name = " + pod_name.replace('\n','') + "/ PVC size =  " + str(sum_size))
+                        #print("EFS PVC Monitor >> " + " namespace = " + get_namespaces[val] + "/ pod name = " + pod_name.replace('\n','') + "/ PVC size =  " + str(sum_size))
+                        metric_info = {"namespace":get_namespaces[val], "name":pod_name.replace('\n',''), "size":str(sum_size), "pvc":get_pvc_names[val]}
+                        metric_list.append(dict(metric_info))
                     else:
-                        print("EFS PVC Monitor >> " + " namespace = " + get_namespaces[val] + "/ pod name = " + pod_name.replace('\n','') +" / PVC size =  " + "4KB")
-                    #print(pod_name_cmd)
-                    #print('pod name : ' + pod_name.replace('\n',''))
-                
-                    ## namespace / pod name / size
-                
+                        #print("EFS PVC Monitor >> " + " namespace = " + get_namespaces[val] + "/ pod name = " + pod_name.replace('\n','') +" / PVC size =  " + "4KB")
+                        metric_info = {"namespace":get_namespaces[val], "name":pod_name.replace('\n',''), "size":"4KB", "pvc":get_pvc_names[val]}
+                        metric_list.append(dict(metric_info))
+
+            json_info = {"timestamp":str(datetime_now),"metadata":{ "pod":metric_list } }
+
+    print(json.dumps(json_info))
     stop = timeit.default_timer()
     laptime=stop-start
     print('laptime = ' + str(laptime))
