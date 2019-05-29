@@ -7,114 +7,152 @@ import json
 from datetime import datetime
 
 
-def humanbytes(B):
-   'Return the given bytes as a human friendly KB, MB, GB, or TB string'
-   B = float(B)
-   KB = float(1024)
-   MB = float(KB ** 2) # 1,048,576
-   GB = float(KB ** 3) # 1,073,741,824
-   TB = float(KB ** 4) # 1,099,511,627,776
+def human_bytes(B):
+    """Return human readable file unit like KB, MB, GB string by Byte
+    Args:
+        B : input byte values
+    Returns:
+        KB / MB / GB
+    """
+    B = float(B)
+    KB = float(1024)
+    MB = float(KB ** 2) # 1,048,576
+    GB = float(KB ** 3) # 1,073,741,824
+    TB = float(KB ** 4) # 1,099,511,627,776
 
-   if B < KB:
-      return '{0} {1}'.format(B,'Bytes' if 0 == B > 1 else 'Byte')
-   elif KB <= B < MB:
-      return '{0:.2f} KB'.format(B/KB)
-   elif MB <= B < GB:
-      return '{0:.2f} MB'.format(B/MB)
-   elif GB <= B < TB:
-      return '{0:.2f} GB'.format(B/GB)
+    if B < KB:
+        return '{0} {1}'.format(B,'Bytes' if 0 == B > 1 else 'Byte')
+    elif KB <= B < MB:
+        return '{0:.2f} KB'.format(B/KB)
+    elif MB <= B < GB:
+        return '{0:.2f} MB'.format(B/MB)
+    elif GB <= B < TB:
+        return '{0:.2f} GB'.format(B/GB)
 
-if __name__ == "__main__":
-    ##### Count filesystem size for du / df 
-    ##### It failed because prometheus server can't use '/bin/bash' or '/bin/sh', so it du / df command didn't work.
+def get_info():
+    """Return name, namespace, volumeName for PVC in kubernetes cluster
+    Args:
+        None
+    Returns:
+        all info for list
+        [[name],[namespace],[pvc id]]
+    """
     
-    datetime_now = datetime.now()
-    start = timeit.default_timer()
-    get_namespaces = []
-    get_namespace = subprocess.check_output("kubectl get pvc --all-namespaces | awk '{print $1}'", shell=True)
-    get_pvc_name = subprocess.check_output("kubectl get pvc --all-namespaces | awk '{print $2}'", shell=True)
-    get_pvc_id = subprocess.check_output("kubectl get pvc --all-namespaces | awk '{print $4}'", shell=True)
+    info_pre = subprocess.check_output("kubectl get pvc --all-namespaces -o json | jq ' .items[].metadata.name, .items[].metadata.namespace, .items[].spec.volumeName'", shell=True)
+    info_pre_list = info_pre.replace('"','').decode("utf-8").split()
+    info_count=len(info_pre_list)
+    
+    cnt = 0
+    get_namespace, get_pvc_name, get_pvc_id = ([] for i in range(3)) # Define get_namespace, get_pvc_name, get_pvc_id
 
+    for arg in info_pre_list:
+        if info_count > cnt:
+            get_pvc_name.append(arg)
+        elif info_count*2 > cnt and info_count <= cnt:
+            get_namespace.append(arg)
+        elif info_count*3 > cnt and info_count*2 <= cnt:
+            get_pvc_id.append(arg)
+        else:
+            print("Out of index")
+        cnt=cnt+1
+    
+    return [get_namespace, get_pvc_name, get_pvc_id]
 
-    get_namespaces = get_namespace.decode("utf-8").split()
-    get_pvc_names = get_pvc_name.decode("utf-8").split()
-    get_pvc_ids = get_pvc_id.decode("utf-8").split()
+def collect_info():
 
+    namespaces, pvc_names, pvc_ids = get_info() # namespaces, pvc_names, pvc_ids are list
 
-    if not get_namespaces:
-        print("It didn't find namespaces / you should check kubernetes cluster")
+    if not namespaces:
+        print("Warning : Can't find namespaces \n"
+            "You should check authorization in kubernetes cluster \n")
     else:
-        get_namespaces.pop(0)
-        get_pvc_names.pop(0)
-        get_pvc_ids.pop(0)
-        
-        #print(get_namespaces)
-
         get_efs_provisioner_name = subprocess.check_output("kubectl get pod -n kube-system | grep efs | awk '{print $1}'", shell=True)
-        get_efs_provisioner_name = get_efs_provisioner_name.decode("utf-8").replace('\n','')
+        efs_provisioner_name = get_efs_provisioner_name.decode("utf-8").replace('\n','')
         
-        metric_list = []
-        for val in range(len(get_namespaces)):
-            find_dir_cmd = "kubectl exec -it " + get_efs_provisioner_name + " -n kube-system -- ls -al /persistentvolumes | awk '{print $9}' | grep " + get_pvc_names[val] + "-" + get_pvc_ids[val]
+        metric_list = [] # Define metric list
+        datetime_now = datetime.now() # Define current time
+
+        """
+        Collect size of pvc which mount each pods.
+        List directories in 'persistentvolumes' directory and use 'du' command for collecting pvc size.
+        """
+        for val in range(len(namespaces)):
+            find_dir_cmd = "kubectl exec -it " + efs_provisioner_name + " -n kube-system -- ls -al /persistentvolumes | awk '{print $9}' | grep " + pvc_names[val] + "-" + pvc_ids[val]
+
             try:
                 find_dir = subprocess.check_output(find_dir_cmd, shell=True)
                 find_dir = find_dir.decode("utf-8")
             except subprocess.CalledProcessError as ex:
-                o = ex.output
+                # output = ex.output
                 returncode = ex.returncode
                 if returncode != 1:
                     raise
 
             if find_dir:
-                ## pod name
-                pod_name_cmd = "kubectl describe pvc -n " + get_namespaces[val] + " " + get_pvc_names[val] + " | grep Mounted | awk '{print $3}'"
+                pod_name_cmd = "kubectl describe pvc -n " + namespaces[val] + " " + pvc_names[val] + " | grep Mounted | awk '{print $3}'" # pod name
                 pod_name = subprocess.check_output(pod_name_cmd, shell=True)
                 pod_name = pod_name.decode("utf-8")
 
                 if 'none' not in pod_name.replace('\n',''):
-                    ## calculate all size
-                    ## it has a bug --> du caculate too late so tty timeout and it doesn't calculate 
-                    # mount_size_cmd = "kubectl exec -it " + get_efs_provisioner_name + " -n kube-system -- du -c -hs /persistentvolumes/" + get_pvc_names[val] + "-" + get_pvc_ids[val] + " | awk '{print $1}'"
-                    # m_size = subprocess.check_output(mount_size_cmd, shell=True)
-                    # m_size = m_size.split().pop(0)
-                    #mount_size.append(m_size)
-                    #print(mount_size)
-
-                    ## find list
-                    #print("pvc name : "+get_pvc_names[val])
-                    find_file_list_cmd = "kubectl exec -it " +get_efs_provisioner_name + " -n kube-system -- ls -al /persistentvolumes/" + get_pvc_names[val] + "-" + get_pvc_ids[val] + " | awk '{print $9}' | sed -r \"s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g\""
+                    """
+                    It has a bug --> du caculate too late some of kubernetes cluster and then tty timeout. So it doesn't calculate.
+                    Using command for 'du' is like this.
+                    
+                    cmd --> mount_size_cmd = "kubectl exec -it " + efs_provisioner_name + " -n kube-system -- du -c -hs /persistentvolumes/" + pvc_names[val] + "-" + pvc_ids[val] + " | awk '{print $1}'"
+                    """
+                    
+                    find_file_list_cmd = "kubectl exec -it " +efs_provisioner_name + " -n kube-system -- ls -al /persistentvolumes/" + pvc_names[val] + "-" + pvc_ids[val] + " | awk '{print $9}' | sed -r \"s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g\"" # find list
                     find_file_list = subprocess.check_output(find_file_list_cmd, shell=True)
                     find_file_list = find_file_list.decode("utf-8").split()
                     find_file_list.remove('.')
                     find_file_list.remove('..')
-                    # print(find_file_list)
 
                     if len(find_file_list) != 0:
                         mount_size=[]
                         for _file in find_file_list:
-                            m_size_cmd = "kubectl exec -it " + get_efs_provisioner_name + " -n kube-system -- du -ks /persistentvolumes/" + get_pvc_names[val] + "-" + get_pvc_ids[val] + "/" + _file + " | awk '{print $1}'"
+                            m_size_cmd = "kubectl exec -it " + efs_provisioner_name + " -n kube-system -- du -ks /persistentvolumes/" + pvc_names[val] + "-" + pvc_ids[val] + "/" + _file + " | awk '{print $1}'"
                             m_size = subprocess.check_output(m_size_cmd, shell=True)
                             m_size=m_size.decode("utf-8").split()
-                            # print(''.join(m_size))
                             mount_size.append(''.join(m_size))
                         mount_size = list(map(int, mount_size))
                         
                         sum_size = sum(mount_size)
-                        sum_size = humanbytes(sum_size*1024)
-                        #print("EFS PVC Monitor >> " + " namespace = " + get_namespaces[val] + "/ pod name = " + pod_name.replace('\n','') + "/ PVC size =  " + str(sum_size))
-                        metric_info = {"namespace":get_namespaces[val], "name":pod_name.replace('\n',''), "size":str(sum_size), "pvc":get_pvc_names[val]}
-                        metric_list.append(dict(metric_info))
-                    else:
-                        #print("EFS PVC Monitor >> " + " namespace = " + get_namespaces[val] + "/ pod name = " + pod_name.replace('\n','') +" / PVC size =  " + "4KB")
-                        metric_info = {"namespace":get_namespaces[val], "name":pod_name.replace('\n',''), "size":"4KB", "pvc":get_pvc_names[val]}
+                        sum_size = human_bytes(sum_size*1024)
+                        
+                        metric_info = {"namespace":namespaces[val], "name":pod_name.replace('\n',''), "size":str(sum_size), "pvc":pvc_names[val]}
                         metric_list.append(dict(metric_info))
 
-            json_info = {"timestamp":str(datetime_now),"metadata":{ "pod":metric_list } }
+                        #print("EFS PVC Monitor >> " + " namespace = " + namespaces[val] + "/ pod name = " + pod_name.replace('\n','') + "/ PVC size =  " + str(sum_size))
+                    else:
+                        metric_info = {"namespace":namespaces[val], "name":pod_name.replace('\n',''), "size":"4KB", "pvc":pvc_names[val]}
+                        metric_list.append(dict(metric_info))
+
+                        #print("EFS PVC Monitor >> " + " namespace = " + namespaces[val] + "/ pod name = " + pod_name.replace('\n','') +" / PVC size =  " + "4KB")
+
+        json_info = {"timestamp":str(datetime_now),"metadata":{ "pod":metric_list } } # Before change json type
+        return json_info
+
+
+
+if __name__ == "__main__":
+    """
+    Collect pvc size, pvc name, namespace, pod name.
+    It uses 'kubectl' command for executing command 'kubectl exec' and 'du' command for finding size how much pods are using.
+    It uses 'exec' command that exporter gets inside to pods and collect files, directories size.
+    But it failed because prometheus server can't use '/bin/bash' or '/bin/sh', so it du / df command didn't work.
+    So find directories list in /persistentvolumes/
+    """
+
+    start = timeit.default_timer() # Record processing time
+
+    json_info = collect_info()
 
     print(json.dumps(json_info))
+
     stop = timeit.default_timer()
     laptime=stop-start
-    print('laptime = ' + str(laptime))
+
+    print('\nlaptime = ' + str(laptime))
     
     '''
     [ec2-user@seoul-dev-okc1-bastion ~]$ k get pvc --all-namespaces
@@ -273,61 +311,3 @@ if __name__ == "__main__":
     Events:        <none>
     Mounted By:    grafana-9474c8f77-hb8cq
     '''
-
-
-
-    # result = subprocess.check_output("kubectl get pv --all-namespaces -o json | jq '.items[].status.phase'", shell=True)
-    # result=result.replace('"','')
-    # a=0
-    # result_list=result.split("\n")
-    # namespace_list=[]
-    # for s in result_list:
-    #     ## check if pv is "Bound"
-    #     if "Bound" == s:
-    #         a=a+1
-    #         a=str(a)
-
-    #         ## find name / namespace for pv which is "Bound"
-    #         name_cmd = "kubectl get pv --all-namespaces -o json | jq '.items[" + a + "].spec.claimRef.name'"
-    #         name = subprocess.check_output(name_cmd, shell=True).rstrip()
-    #         namespace_cmd = "kubectl get pv --all-namespaces -o json | jq '.items[" + a + "].spec.claimRef.namespace'"
-    #         namespace = subprocess.check_output(namespace_cmd, shell=True)
-    #         a=int(a)
-    #         # print(name + " " + namespace)
-    #         namespace=''.join(namespace.rstrip())
-    #         namespace_list.append(namespace)
-
-    # ## remove duplicate values
-    # mount_pod_list=[]
-    # mount_path_list=[]
-    # namespace_list = list(set(namespace_list))
-    # for val in namespace_list:
-    #     ## find pod mounted
-    #     print("val = "+val)
-    #     mount_pod_cmd = "kubectl describe pvc -n " + val + " | grep Mounted | awk '{print $3}'"
-    #     mount_pod = subprocess.check_output(mount_pod_cmd, shell=True)
-    #     mount_pod=mount_pod.split("\n")
-
-    #     for m_path in mount_pod:
-    #         ## find mountPath in pod
-    #         if m_path != "<none>" and m_path:
-    #             print("path = "+m_path)
-    #             mount_path_cmd = "kubectl get pod -n " + val + " " + m_path + " -o json | jq '.spec.containers[].volumeMounts[].mountPath'"
-    #             mount_path=subprocess.check_output(mount_path_cmd, shell=True)
-    #             print(mount_path+"\n")
-                
-    #             ## append list in list
-    #             for xx in mount_path.split("\n"):
-    #                 if "secrets" not in xx and xx and "yaml" not in xx and "ini" not in xx and "toml" not in xx and "config" not in xx:
-    #                     print(xx)
-    #                     mount_size_cmd = "kubectl exec -it -n " + val + " " + m_path + " -- du -c -hs " + xx.replace('"','')
-    #                     mount_size = subprocess.check_output(mount_size_cmd, shell=True)
-    #                     print(mount_size_cmd)
-    #                     print(mount_size)
-    #                     # mount_path_temp_list=xx.rstrip()
-    #                     # mount_path_list.append(mount_path_temp_list)
-    #                     print("================================================")
-    #         else:
-    #             continue
-
-    # print(mount_path_list)

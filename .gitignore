@@ -2,3 +2,4 @@
 .draftignore
 .valvesecret
 test.sh
+.vscode
