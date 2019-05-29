@@ -39,8 +39,9 @@ def get_info():
     """
     
     info_pre = subprocess.check_output("kubectl get pvc --all-namespaces -o json | jq ' .items[].metadata.name, .items[].metadata.namespace, .items[].spec.volumeName'", shell=True)
-    info_pre_list = info_pre.replace('"','').split()
-    print(info_pre_list)
+    info_pre_list = info_pre.decode("utf-8").replace('"','').split()
+    print(info_pre.decode("utf-8"))
+    print(info_pre.decode("utf-8").replace('"',''))
     info_count=len(info_pre_list)
     
     cnt = 0
