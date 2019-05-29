@@ -40,9 +40,7 @@ def get_info():
     
     info_pre = subprocess.check_output("kubectl get pvc --all-namespaces -o json | jq ' .items[].metadata.name, .items[].metadata.namespace, .items[].spec.volumeName'", shell=True)
     info_pre_list = info_pre.decode("utf-8").replace('"','').split()
-    print(info_pre.decode("utf-8"))
-    print(info_pre.decode("utf-8").replace('"',''))
-    info_count=len(info_pre_list)
+    info_count=len(info_pre_list)/3
     
     cnt = 0
     get_namespace, get_pvc_name, get_pvc_id = ([] for i in range(3)) # Define get_namespace, get_pvc_name, get_pvc_id
@@ -54,8 +52,6 @@ def get_info():
             get_namespace.append(arg)
         elif info_count*3 > cnt and info_count*2 <= cnt:
             get_pvc_id.append(arg)
-        else:
-            print("Out of index")
         cnt=cnt+1
     
     return [get_namespace, get_pvc_name, get_pvc_id]
