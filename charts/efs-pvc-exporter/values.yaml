@@ -2,22 +2,6 @@ image:
   repository: opsnowtools/efs-pvc-exporter
   tag: v0.0.0
 
-schedule: "*/10 * * * *"
+schedule: "*/1 * * * *"
 
-restart: Never
-
-#resources:
-#  requests:
-#    cpu: 100m
-#    memory: 128Mi
-#  limits:
-#    cpu: 120m
-#    memory: 153Mi
-
-env: {}
-
-configmap:
-  enabled: false
-
-secret:
-  enabled: false
+restart: OnFailure
