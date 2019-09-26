@@ -4,4 +4,6 @@ image:
 
 schedule: "*/1 * * * *"
 
+rolename: efs-viewer
+
 restart: OnFailure

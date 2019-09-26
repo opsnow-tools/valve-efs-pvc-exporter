@@ -7,7 +7,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ template "efs-pvc-exporter.fullname" . }}
+  name: valve:{{ .Values.rolename }}
 rules:
 - apiGroups: [""]
   resources: ["pods", "persistentvolumeclaims"]
