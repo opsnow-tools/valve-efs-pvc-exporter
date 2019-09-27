@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/name: {{ include "fullname" . }}
     helm.sh/chart: {{ include "chart" . }}
 spec:
-  schedule: "{{ .Values.schedule }}"
+  schedule: {{ .Values.schedule }}
   jobTemplate:
     spec:
       template:
@@ -17,3 +17,4 @@ spec:
           containers:
           - name: {{ .Chart.Name }}
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          restartPolicy: {{ .Values.restart }}
