@@ -21,22 +21,7 @@ def get_info():
     info_pre_cmd = "kubectl get pvc --all-namespaces -o json | jq ' .items[].metadata.name, .items[].metadata.namespace, .items[].spec.volumeName'"
     info_pre = Popen(info_pre_cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
     info_pre_list = info_pre.stdout.read().replace('"','').split()
-    info_count=len(info_pre_list)/3
-    
-    cnt = 0
-    get_namespace, get_pvc_name, get_pvc_id = ([] for i in range(3)) # Define get_namespace, get_pvc_name, get_pvc_id
-
-    for arg in info_pre_list:
-        if info_count > cnt:
-            get_pvc_name.append(arg)
-        elif info_count*2 > cnt and info_count <= cnt:
-            get_namespace.append(arg)
-        elif info_count*3 > cnt and info_count*2 <= cnt:
-            get_pvc_id.append(arg)
-        cnt=cnt+1
-    
-    return [get_namespace, get_pvc_name, get_pvc_id]
-
+    print(info_pre_list)
 
 def collect_info():
 
