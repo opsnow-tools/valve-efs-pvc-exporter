@@ -99,11 +99,13 @@ def collect_info():
 if __name__ == "__main__":
     start = timeit.default_timer() # Record processing time
 
-    json_info = collect_info()
+    get_info()
 
-    print(json.dumps(json_info))
+    # json_info = collect_info()
 
-    stop = timeit.default_timer()
-    laptime=stop-start
+    # print(json.dumps(json_info))
 
-    print('\nlaptime = ' + str(laptime))
+    # stop = timeit.default_timer()
+    # laptime=stop-start
+
+    # print('\nlaptime = ' + str(laptime))
