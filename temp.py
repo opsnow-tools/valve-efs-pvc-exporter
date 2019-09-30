@@ -18,9 +18,13 @@ def get_info():
     """
     
     #info_pre = subprocess.check_output("kubectl get pvc --all-namespaces -o json | jq ' .items[].metadata.name, .items[].metadata.namespace, .items[].spec.volumeName'", shell=True)
-    info_pre_cmd = "kubectl get pvc --all-namespaces -o json | jq ' .items[].metadata.name, .items[].metadata.namespace, .items[].spec.volumeName'"
+    info_pre_cmd = " kubectl get pvc --all-namespaces -o json | jq -c '.items[] | .metadata.namespace, .metadata.name, .spec.volumeName'"
     info_pre = Popen(info_pre_cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
     info_pre_list = info_pre.stdout.read().replace('"','').split()
+    cnt = 0
+    for arg in info_pre_list:
+        while cnt % 3 == 2:
+            pvc_list = ()
     print(info_pre_list)
 
 def collect_info():
