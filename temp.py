@@ -6,6 +6,7 @@ import subprocess
 import timeit
 import json
 from datetime import datetime
+import pytest
 
 
 def get_info():
